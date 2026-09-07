@@ -143,10 +143,13 @@ O cronômetro usa um **prazo absoluto** (`Date.now() + 45s`), não contagem de t
 O Android suspende timers de aba em segundo plano; com prazo absoluto o relógio se
 corrige ao voltar, em vez de "ganhar" o tempo parado. `visibilitychange` reacerta na hora.
 
-**Botão JOGAR (só na tela `col-regras`, por ora):** a tela de regras do Relacione as
-colunas tem um botão JOGAR em vez de avançar com toque em qualquer lugar — assim a
-pessoa lê as regras sem começar sem querer. O botão é um **recorte da própria arte**
-(o JOGAR da tela LGPD, `sprites/btn-jogar.png`), não um botão refeito em CSS.
+**Botão JOGAR nas três telas de regras:** elas não avançam mais com toque em qualquer
+lugar — assim a pessoa lê as regras sem começar sem querer. O botão é um **recorte da
+própria arte** (o JOGAR da tela LGPD, `sprites/btn-jogar.png`), não um botão refeito em CSS.
+
+Fica em `left:412px; top:1240px` nas três: as telas de regras têm layout idêntico (o
+último texto termina em y1172 e o ícone só começa em y1345), então a mesma posição serve
+para todas e nada precisa ser ajustado caso a caso.
 
 O recorte precisou de transparência porque na arte ele está sobre branco e aqui vai
 sobre amarelo. Flood-fill simples não serviu: partindo da cor do canto ele parava cedo
@@ -154,10 +157,24 @@ e sobrava fundo; usando só "não é preto" como barreira ele vazava para dentro
 a borda pixel tem falhas de 1 px. O que funcionou foi engrossar a barreira preta em
 2 px antes de preencher e depois devolver esses 2 px sem invadir o preto real.
 
-**As telas `cp-regras` e `mem-regras` ainda avançam com toque em qualquer lugar.**
-Se for padronizar, é o mesmo sprite — só trocar o `.hit` de tela cheia por
-`<div class="hit btn-jogar" data-start="cp">` e ajustar `top`/`left` ao espaço livre
-de cada tela (no caça-palavras a lista de palavras desce bem mais).
+### Revelar as respostas ao perder
+
+Quando o tempo acaba com o jogo incompleto, **o que faltou aparece em verde (`#2e9e4f`)**
+por 4 segundos antes da tela de resultado, e o cronômetro vira um selo verde "RESPOSTAS".
+Quem terminou a tempo vai direto para a tela de vitória, sem revelação.
+
+A razão é o objetivo do jogo: ele existe para a pessoa conhecer os serviços do Sistema
+Comércio. Sair sem ver a resposta desperdiça a visita.
+
+O código de cores é o mesmo nos três: **a cor do jogo = o que a pessoa acertou, verde =
+o que faltou**. No caça-palavras, laranja contra verde; no Relacione as colunas, ligação
+azul contra ligação verde; na memória, todas as cartas viram e as não encontradas ganham
+borda verde.
+
+Cada `fim*()` chama `revelar*()` e depois `revelarEDepois(idDoTimer, telaDestino)`.
+Esse helper guarda em qual tela estava: se a pessoa sair antes dos 4 s (ENCERRAR ou os
+90 s de inatividade), o `setTimeout` não sequestra a tela. `goTo()` também cancela a
+revelação pendente e limpa o estado do cronômetro.
 
 ### Relacione as colunas (Sesc Montes Claros)
 

@@ -46,6 +46,7 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
   letter-spacing:1px;padding:14px 20px;border-radius:10px;
   background:rgba(255,255,255,.9);color:#0a3d75;border:4px solid #0a3d75}
 .timer.warn{background:#c0392b;color:#fff;border-color:#7d1f14}
+.timer.resp{background:#2e9e4f;color:#fff;border-color:#1c6633;font-size:20px}
 
 /* ---------- relacione as colunas ---------- */
 .card{position:absolute;width:290px;height:175px;background-repeat:no-repeat;
@@ -54,6 +55,8 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 .card.sel{transform:scale(1.05);box-shadow:0 0 0 8px #00539b, 0 10px 26px rgba(0,0,0,.35);z-index:5}
 .card.done{opacity:.45;pointer-events:none}
 .card.bad{animation:shake .4s}
+.card.reveal{box-shadow:0 0 0 8px #2e9e4f, 0 8px 22px rgba(0,0,0,.3);opacity:1;animation:pisca .5s}
+@keyframes pisca{0%{opacity:.3}100%{opacity:1}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-14px)}
   40%{transform:translateX(14px)}60%{transform:translateX(-9px)}80%{transform:translateX(9px)}}
 
@@ -66,6 +69,7 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
   border-radius:6px;transition:background .12s,color .12s}
 .cel.miss{background:#d9d2c4}
 .cel.hit2{background:#f29100;color:#fff;animation:acha .35s}
+.cel.reveal{background:#2e9e4f;color:#fff;animation:acha .35s}
 @keyframes acha{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
 
 /* ---------- memória ---------- */
@@ -78,6 +82,7 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
   background-repeat:no-repeat;background-size:278px 168px;border-radius:12px}
 .mcard .bk{transform:rotateY(180deg)}
 .mcard.pair{animation:pop .45s}
+.mcard.reveal .fc{box-shadow:0 0 0 7px #2e9e4f}
 @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.09)}100%{transform:scale(1)}}
 
 /* ---------- overlay de contagem ---------- */
@@ -185,7 +190,7 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 
   <!-- ══════════ CAÇA-PALAVRAS ══════════ -->
   <div class="screen" id="s-cp-regras" style="background-image:url('telas/cp-regras.png')">
-    <div class="hit" data-start="cp" style="left:0;top:0;width:1080px;height:1920px"></div>
+    <div class="hit btn-jogar" data-start="cp" style="left:412px;top:1240px"></div>
   </div>
 
   <div class="screen" id="s-cp-jogo" style="background-image:url('telas/cp-jogo-bg.png')">
@@ -206,7 +211,7 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 
   <!-- ══════════ JOGO DA MEMÓRIA ══════════ -->
   <div class="screen" id="s-mem-regras" style="background-image:url('telas/mem-regras.png')">
-    <div class="hit" data-start="mem" style="left:0;top:0;width:1080px;height:1920px"></div>
+    <div class="hit btn-jogar" data-start="mem" style="left:412px;top:1240px"></div>
   </div>
 
   <div class="screen" id="s-mem-jogo" style="background-image:url('telas/mem-jogo-bg.png')">
@@ -269,6 +274,8 @@ addEventListener('resize', scaleToFit);
 /* ════════════════ NAVEGAÇÃO ════════════════ */
 function goTo(id){
   pararTimer();
+  clearTimeout(revelaId);
+  document.querySelectorAll('.timer').forEach(t => t.classList.remove('resp','warn'));
   document.querySelectorAll('.screen').forEach(e => e.classList.remove('on'));
   const el = document.getElementById('s-'+id);
   if(el) el.classList.add('on');
@@ -599,24 +606,68 @@ function tocaCard(el){
   colSel = null;
 }
 
-function ligar(a, b){
+function ligar(a, b, cor){
   const svg = document.getElementById('col-svg');
   const x1 = 142+290, y1 = parseInt(a.style.top)+87;
   const x2 = 648,     y2 = parseInt(b.style.top)+87;
   const ln = document.createElementNS('http://www.w3.org/2000/svg','path');
   ln.setAttribute('d', `M${x1},${y1} C${x1+80},${y1} ${x2-80},${y2} ${x2},${y2}`);
-  ln.setAttribute('stroke', '#00539b');
+  ln.setAttribute('stroke', cor || '#00539b');
   ln.setAttribute('stroke-width', '9');
   ln.setAttribute('fill', 'none');
   ln.setAttribute('stroke-linecap', 'round');
   svg.appendChild(ln);
 }
 
+/* ════════════════ REVELAR AS RESPOSTAS ════════════════
+   Quando o tempo acaba com o jogo incompleto, o que faltou aparece em verde
+   antes da tela de resultado. O jogo existe para a pessoa conhecer os serviços
+   do Sistema Comércio — sair sem ver a resposta desperdiça a visita.          */
+const VERDE = '#2e9e4f';
+const TEMPO_REVELA = 4000;
+let revelaId = null;
+
+function revelarEDepois(elId, destino){
+  const daTela = tela;
+  const t = document.getElementById(elId);
+  t.textContent = 'RESPOSTAS';
+  t.classList.remove('warn');
+  t.classList.add('resp');
+  clearTimeout(revelaId);
+  revelaId = setTimeout(() => { if(tela === daTela) goTo(destino); }, TEMPO_REVELA);
+}
+
+function revelarColunas(){
+  const cards = [...document.querySelectorAll('#col-cards .card')];
+  COL_PARES.forEach(p => {
+    const a = cards.find(c => c.dataset.lado === 'e' && c.dataset.key === p.e);
+    const b = cards.find(c => c.dataset.lado === 'd' && c.dataset.key === p.d);
+    if(!a || !b || a.classList.contains('done')) return;   // esse par a pessoa já fez
+    a.classList.add('reveal'); b.classList.add('reveal');
+    ligar(a, b, VERDE);
+  });
+}
+
+function revelarCacaPalavras(){
+  CP_PALAVRAS.filter(p => !cpAchadas.includes(p.t)).forEach(p => {
+    celulasDe(p).forEach(([r,c]) => {
+      const cel = document.querySelector(`.cel[data-r="${r}"][data-c="${c}"]`);
+      if(cel && !cel.classList.contains('hit2')) cel.classList.add('reveal');
+    });
+  });
+}
+
+function revelarMemoria(){
+  document.querySelectorAll('.mcard:not(.pair)').forEach(c => c.classList.add('up','reveal'));
+}
+
 function fimColunas(venceu){
   pararTimer();
   jogados.push({ jogo:'Relacione as colunas', acertos:colFeitos, total:5, venceu });
   salvarLead();
-  goTo(venceu ? 'col-win' : 'col-lose');
+  if(venceu) return goTo('col-win');
+  revelarColunas();
+  revelarEDepois('t-col', 'col-lose');
 }
 
 /* ════════════════ JOGO 2 — CAÇA-PALAVRAS ════════════════ */
@@ -698,7 +749,9 @@ function fimCacaPalavras(venceu){
   pararTimer();
   jogados.push({ jogo:'Caça-palavras', acertos:cpAchadas.length, total:5, venceu });
   salvarLead();
-  goTo(venceu ? 'cp-win' : 'cp-lose');
+  if(venceu) return goTo('cp-win');
+  revelarCacaPalavras();
+  revelarEDepois('t-cp', 'cp-lose');
 }
 
 /* ════════════════ JOGO 3 — MEMÓRIA ════════════════ */
@@ -757,7 +810,9 @@ function fimMemoria(venceu){
   pararTimer();
   jogados.push({ jogo:'Jogo da memória', acertos:memPares, total:5, venceu });
   salvarLead();
-  goTo(venceu ? 'mem-win' : 'mem-lose');
+  if(venceu) return goTo('mem-win');
+  revelarMemoria();
+  revelarEDepois('t-mem', 'mem-lose');
 }
 
 /* ════════════════ FLUXO DOS JOGOS ════════════════ */
