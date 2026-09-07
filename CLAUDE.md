@@ -190,14 +190,29 @@ O lead é regravado ao fim de cada jogo, sempre **atualizando a mesma linha** pe
 (o Apps Script procura o ID antes de inserir). Um lead sem `id` nunca é gravado —
 cadastro incompleto não vira linha órfã.
 
-### Ligar a planilha
+### Planilha (já ligada)
 
-1. `google-apps-script.gs` tem o passo a passo no cabeçalho.
-2. Cole a URL `/exec` gerada em `SHEETS_WEBHOOK_URL`, no topo do `<script>` de `index.html`.
+Planilha **Leads FENICS 2026**, webhook Apps Script configurado em `SHEETS_WEBHOOK_URL`
+no topo do `<script>` de `index.html`. Testado em 07/09/2026: insere, e reenvio do
+mesmo `id` atualiza a linha em vez de duplicar.
 
-**Enquanto essa constante estiver vazia, nada é enviado** — tudo fica na fila local e
-o painel mostra "a sincronizar". O jogo funciona normalmente offline; a fila é
-reenviada a cada 30 s e quando a rede volta.
+Se precisar reimplantar o script, a URL `/exec` muda — troque a constante e publique.
+O passo a passo está no cabeçalho de `google-apps-script.gs`.
+
+Se a constante ficar vazia, nada é enviado: tudo fica na fila local e o painel mostra
+"a sincronizar". O jogo funciona igual offline; a fila é reenviada a cada 30 s e
+quando a rede volta.
+
+**Testar o webhook pelo terminal:** `curl -L` não serve — o Apps Script responde 302 e
+o curl perde o POST no redirecionamento, devolvendo "página não encontrada" mesmo com
+tudo certo. Siga o redirect à mão:
+
+```bash
+U='...exec'
+L=$(curl -s -o /dev/null -w "%{redirect_url}" -X POST "$U" \
+     -H 'Content-Type: text/plain;charset=utf-8' -d '{"id":"T1","nome":"Teste"}')
+curl -s "$L"     # → {"ok":true,"id":"T1","atualizado":false}
+```
 
 ### Painel
 
@@ -212,7 +227,8 @@ Exporta CSV com BOM (abre no Excel com acentos corretos) e backup JSON.
 
 ## Pendências antes do evento
 
-- [ ] Criar a planilha e colar a URL em `SHEETS_WEBHOOK_URL`
+- [x] Criar a planilha e colar a URL em `SHEETS_WEBHOOK_URL` — feito em 07/09/2026
+- [ ] **Apagar as linhas de teste da planilha** (ids `DIAG-*` e `TESTE-*`)
 - [ ] Testar no totem real (touch, teclado Android nos campos, brilho)
 - [ ] Confirmar que o Wi-Fi do evento não bloqueia `script.google.com`
 
