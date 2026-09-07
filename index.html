@@ -20,6 +20,11 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 .hit{position:absolute;cursor:pointer;background:transparent}
 .hit:active{filter:brightness(1.12)}
 
+/* botão JOGAR — recorte da própria arte (o mesmo da tela LGPD) */
+.btn-jogar{width:256px;height:118px;background:url('sprites/btn-jogar.png') no-repeat;
+  background-size:256px 118px}
+.btn-jogar:active{transform:scale(.96);filter:none}
+
 /* ---------- cadastro ---------- */
 .fld{position:absolute;border:none;background:transparent;
   font-family:'RobotoF';font-weight:700;font-size:34px;color:#0a3d75;
@@ -158,7 +163,7 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 
   <!-- ══════════ RELACIONE AS COLUNAS ══════════ -->
   <div class="screen" id="s-col-regras" style="background-image:url('telas/col-regras.png')">
-    <div class="hit" data-start="col" style="left:0;top:0;width:1080px;height:1920px"></div>
+    <div class="hit btn-jogar" data-start="col" style="left:412px;top:1240px"></div>
   </div>
 
   <div class="screen" id="s-col-jogo" style="background-image:url('telas/col-jogo-bg.png')">

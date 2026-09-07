@@ -143,6 +143,22 @@ O cronômetro usa um **prazo absoluto** (`Date.now() + 45s`), não contagem de t
 O Android suspende timers de aba em segundo plano; com prazo absoluto o relógio se
 corrige ao voltar, em vez de "ganhar" o tempo parado. `visibilitychange` reacerta na hora.
 
+**Botão JOGAR (só na tela `col-regras`, por ora):** a tela de regras do Relacione as
+colunas tem um botão JOGAR em vez de avançar com toque em qualquer lugar — assim a
+pessoa lê as regras sem começar sem querer. O botão é um **recorte da própria arte**
+(o JOGAR da tela LGPD, `sprites/btn-jogar.png`), não um botão refeito em CSS.
+
+O recorte precisou de transparência porque na arte ele está sobre branco e aqui vai
+sobre amarelo. Flood-fill simples não serviu: partindo da cor do canto ele parava cedo
+e sobrava fundo; usando só "não é preto" como barreira ele vazava para dentro, porque
+a borda pixel tem falhas de 1 px. O que funcionou foi engrossar a barreira preta em
+2 px antes de preencher e depois devolver esses 2 px sem invadir o preto real.
+
+**As telas `cp-regras` e `mem-regras` ainda avançam com toque em qualquer lugar.**
+Se for padronizar, é o mesmo sprite — só trocar o `.hit` de tela cheia por
+`<div class="hit btn-jogar" data-start="cp">` e ajustar `top`/`left` ao espaço livre
+de cada tela (no caça-palavras a lista de palavras desce bem mais).
+
 ### Relacione as colunas (Sesc Montes Claros)
 
 As duas colunas são **embaralhadas a cada partida**. Toca num card de um lado e no par
