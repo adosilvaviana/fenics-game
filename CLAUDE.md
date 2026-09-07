@@ -158,9 +158,20 @@ do outro. Acerto desenha uma curva SVG ligando os dois; erro sacode os cards.
 **Grade fixa, 23 linhas × 12 colunas** — é a que o cliente aprovou na arte, transcrita
 letra por letra do texto vivo do `.ai` (não de OCR). Fica em `CP_GRID`.
 
-Joga-se **tocando a primeira e depois a última letra** da palavra — mais confiável em
-totem que arrastar o dedo. As letras são `<div>`s em Press Start 2P posicionados sobre
-a moldura vazia, alinhados às coordenadas originais da arte
+Joga-se com **um toque em qualquer letra da palavra**, que revela ela inteira — em
+totem de feira, com fila andando, exigir duas seleções ou arrastar o dedo encarece
+demais a jogada. Toque numa letra que não pertence a palavra nenhuma pisca cinza.
+
+Isso não banaliza o jogo: 55 das 276 células revelam algo (~20%), então tocar à toa
+precisa de **51 toques em média** para achar as cinco, e em 45 s dá tempo de uns 30.
+Quem lê a lista de palavras acha em 5 toques. Se um dia isso for afrouxado (mais
+palavras, grade menor), vale refazer a conta antes.
+
+Numa letra de **cruzamento** (a linha 8 corta as três verticais), o toque revela a
+primeira palavra ainda não achada na ordem de `CP_PALAVRAS`; tocar de novo revela a outra.
+
+As letras são `<div>`s em Press Start 2P posicionados sobre a moldura vazia, alinhados
+às coordenadas originais da arte
 (origem 187,36 × 812,62; passo 62,2617 × 32,9965; corpo 26,8 px).
 
 | Palavra | Direção | Posição |

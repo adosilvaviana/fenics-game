@@ -59,8 +59,9 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 .cel{position:absolute;width:34px;height:34px;line-height:34px;text-align:center;
   font-family:'PressStart2P';font-size:26.8px;color:#000;cursor:pointer;
   border-radius:6px;transition:background .12s,color .12s}
-.cel.pick{background:#00539b;color:#fff}
-.cel.hit2{background:#f29100;color:#fff}
+.cel.miss{background:#d9d2c4}
+.cel.hit2{background:#f29100;color:#fff;animation:acha .35s}
+@keyframes acha{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
 
 /* ---------- memória ---------- */
 .mcard{position:absolute;width:278px;height:168px;cursor:pointer;
@@ -585,10 +586,10 @@ const CP_PALAVRAS = [
   { t:'PÓS-GRADUAÇÃO', r:17, c:0,  dr:0, dc:1, n:12 },
 ];
 const CP_X0 = 187.36, CP_Y0 = 812.62, CP_DX = 62.2617, CP_DY = 32.9965;
-let cpAchadas = [], cpPick = null;
+let cpAchadas = [];
 
 function iniciaCacaPalavras(){
-  cpAchadas = []; cpPick = null;
+  cpAchadas = [];
   const box = document.getElementById('cp-letters');
   box.innerHTML = '';
   for(let r=0;r<CP_GRID.length;r++){
@@ -613,35 +614,32 @@ function celulasDe(p){
   return out;
 }
 
+// Um toque em QUALQUER letra da palavra revela ela inteira. Em totem de feira,
+// com fila andando, pedir duas seleções encarece demais a jogada.
 function tocaCelula(el){
   if(!timerId) return;
   const r = +el.dataset.r, c = +el.dataset.c;
 
-  if(!cpPick){ cpPick = {r,c,el}; el.classList.add('pick'); return; }
-  if(cpPick.r === r && cpPick.c === c){ el.classList.remove('pick'); cpPick = null; return; }
+  const p = CP_PALAVRAS.find(w =>
+    !cpAchadas.includes(w.t) &&
+    celulasDe(w).some(([rr,cc]) => rr === r && cc === c)
+  );
 
-  // a jogada é: tocar a primeira e depois a última letra da palavra
-  const p = CP_PALAVRAS.find(w => {
-    if(cpAchadas.includes(w.t)) return false;
-    const cs = celulasDe(w);
-    const a = cs[0], b = cs[cs.length-1];
-    return (a[0]===cpPick.r && a[1]===cpPick.c && b[0]===r && b[1]===c) ||
-           (b[0]===cpPick.r && b[1]===cpPick.c && a[0]===r && a[1]===c);
+  if(!p){
+    el.classList.add('miss');
+    setTimeout(() => el.classList.remove('miss'), 220);
+    return;
+  }
+
+  cpAchadas.push(p.t);
+  celulasDe(p).forEach(([rr,cc]) => {
+    const cel = document.querySelector(`.cel[data-r="${rr}"][data-c="${cc}"]`);
+    if(cel) cel.classList.add('hit2');
   });
 
-  cpPick.el.classList.remove('pick');
-  cpPick = null;
-
-  if(p){
-    cpAchadas.push(p.t);
-    celulasDe(p).forEach(([rr,cc]) => {
-      const cel = document.querySelector(`.cel[data-r="${rr}"][data-c="${cc}"]`);
-      if(cel) cel.classList.add('hit2');
-    });
-    if(cpAchadas.length === CP_PALAVRAS.length){
-      pararTimer();
-      setTimeout(() => fimCacaPalavras(true), 700);
-    }
+  if(cpAchadas.length === CP_PALAVRAS.length){
+    pararTimer();
+    setTimeout(() => fimCacaPalavras(true), 700);
   }
 }
 
