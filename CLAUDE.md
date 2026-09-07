@@ -33,7 +33,10 @@ Publicar:
 git add -A && git commit -m "descrição" && git push origin main
 ```
 
-GitHub Pages publica em ~1 min. Depois do push, `Ctrl+Shift+R` no totem.
+GitHub Pages publica em ~1 min. **Depois do push, `Ctrl+Shift+R` no totem** — o Pages
+serve com `Cache-Control: max-age=600`, então sem recarga forçada o totem pode rodar a
+versão antiga por até 10 minutos. Se não der para forçar, abrir com `?v=2` (qualquer
+valor novo) também escapa do cache.
 
 ---
 
