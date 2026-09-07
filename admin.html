@@ -1,0 +1,127 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leads — FENICS 2026</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#eef1f5;color:#12283f;padding:28px}
+h1{font-size:26px;color:#0a3d75;margin-bottom:4px}
+.sub{color:#5b7a99;margin-bottom:22px;font-size:14px}
+.row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.kpi{background:#fff;border:2px solid #dae2ec;border-radius:12px;padding:16px 22px;min-width:150px}
+.kpi b{display:block;font-size:34px;color:#0a3d75;line-height:1.1}
+.kpi span{font-size:13px;color:#5b7a99;text-transform:uppercase;letter-spacing:.5px}
+button{background:#0a3d75;color:#fff;border:0;border-radius:9px;padding:13px 22px;
+  font-size:15px;font-weight:600;cursor:pointer;margin-right:10px}
+button.alt{background:#fff;color:#0a3d75;border:2px solid #0a3d75}
+button.dgr{background:#c0392b}
+button:active{opacity:.85}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.09);font-size:13px}
+th{background:#0a3d75;color:#fff;padding:11px 9px;text-align:left;font-size:12px;
+  text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+td{padding:10px 9px;border-bottom:1px solid #eef1f5;vertical-align:top}
+tr:hover td{background:#f7f9fc}
+.wrap{overflow-x:auto;margin-top:8px}
+.tag{display:inline-block;background:#e8f0fa;color:#0a3d75;border-radius:5px;
+  padding:2px 7px;font-size:11px;margin:1px 2px 1px 0}
+.pend{background:#fdecea;color:#c0392b}
+.vazio{padding:60px;text-align:center;color:#8fa5bb;background:#fff;border-radius:12px}
+</style>
+
+<h1>Leads — FENICS 2026</h1>
+<div class="sub">GAME Sistema Comércio · dados gravados neste totem (localStorage)</div>
+
+<div class="row" id="kpis"></div>
+
+<div style="margin-bottom:18px">
+  <button onclick="baixarCSV()">Baixar Excel (CSV)</button>
+  <button class="alt" onclick="baixarJSON()">Backup JSON</button>
+  <button class="alt" onclick="location.reload()">Atualizar</button>
+  <button class="dgr" onclick="limpar()">Apagar tudo</button>
+</div>
+
+<div id="tbl"></div>
+
+<script>
+'use strict';
+const LS_LEADS='fenics_leads', LS_QUEUE='fenics_queue';
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function ler(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+
+const leads = ler(LS_LEADS);
+const fila  = ler(LS_QUEUE);
+const pend  = new Set(fila.map(l => l.id));
+
+const COLS = [
+  ['id','ID'],['quando','Data/hora'],['nome','Nome'],['doc','CPF/CNPJ'],
+  ['email','E-mail'],['tel','Telefone'],['maior18','+18'],
+  ['perfil','Perfil'],['busca','Interesses'],['lgpd','LGPD'],['jogos','Jogos'],['sync','Sync']
+];
+
+function linha(l){
+  const d = l.timestamp ? new Date(l.timestamp) : null;
+  return {
+    ...l,
+    quando: d ? d.toLocaleString('pt-BR') : '',
+    sync: pend.has(l.id) ? 'pendente' : 'enviado'
+  };
+}
+
+function render(){
+  const n = leads.length;
+  const comJogo = leads.filter(l => (l.jogos||'').trim()).length;
+  const naFila = fila.length;
+  document.getElementById('kpis').innerHTML =
+    `<div class="kpi"><b>${n}</b><span>leads</span></div>
+     <div class="kpi"><b>${comJogo}</b><span>jogaram</span></div>
+     <div class="kpi"><b>${naFila}</b><span>a sincronizar</span></div>`;
+
+  if(!n){ document.getElementById('tbl').innerHTML =
+    '<div class="vazio">Nenhum lead gravado ainda.</div>'; return; }
+
+  const body = leads.slice().reverse().map(linha).map(l =>
+    '<tr>' + COLS.map(([k]) => {
+      let v = esc(l[k] ?? '');
+      if(k === 'busca' && v) v = v.split(' | ').map(x => `<span class="tag">${x}</span>`).join('');
+      if(k === 'jogos' && v) v = v.split(' | ').map(x => `<span class="tag">${x}</span>`).join('');
+      if(k === 'sync') v = `<span class="tag ${l.sync==='pendente'?'pend':''}">${v}</span>`;
+      return `<td>${v}</td>`;
+    }).join('') + '</tr>').join('');
+
+  document.getElementById('tbl').innerHTML =
+    `<div class="wrap"><table><tr>${COLS.map(c=>`<th>${c[1]}</th>`).join('')}</tr>${body}</table></div>`;
+}
+
+function baixarCSV(){
+  if(!leads.length) return alert('Nenhum lead para exportar.');
+  const cel = v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+  const linhas = [COLS.map(c => cel(c[1])).join(';')];
+  leads.map(linha).forEach(l => linhas.push(COLS.map(([k]) => cel(l[k])).join(';')));
+  // BOM para o Excel abrir os acentos certos
+  baixar('﻿' + linhas.join('\r\n'), 'leads-fenics-2026.csv', 'text/csv;charset=utf-8');
+}
+
+function baixarJSON(){
+  baixar(JSON.stringify({leads, fila}, null, 1), 'backup-fenics-2026.json', 'application/json');
+}
+
+function baixar(txt, nome, tipo){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], {type:tipo}));
+  a.download = nome;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+function limpar(){
+  if(!confirm('Apagar TODOS os leads deste totem?\n\nBaixe o CSV antes — isso não tem volta.')) return;
+  if(!confirm('Confirma mesmo? Todos os ' + leads.length + ' leads serão apagados.')) return;
+  localStorage.removeItem(LS_LEADS);
+  localStorage.removeItem(LS_QUEUE);
+  location.reload();
+}
+
+render();
+</script>

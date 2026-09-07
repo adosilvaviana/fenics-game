@@ -1,0 +1,831 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>GAME Sistema Comércio — FENICS 2026</title>
+<style>
+@font-face{font-family:'PressStart2P';src:url('fonts/PressStart2P-vaV7.ttf') format('truetype');font-display:block}
+@font-face{font-family:'RobotoF';src:url('fonts/Roboto-Bold.ttf') format('truetype');font-weight:700;font-display:block}
+@font-face{font-family:'RobotoF';src:url('fonts/Roboto-Regular.ttf') format('truetype');font-weight:400;font-display:block}
+@font-face{font-family:'RobotoF';src:url('fonts/Roboto-Light.ttf') format('truetype');font-weight:300;font-display:block}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
+  font-family:'RobotoF',Arial,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+
+#stage{position:absolute;top:0;left:0;width:1080px;height:1920px;transform-origin:0 0;overflow:hidden}
+
+.screen{position:absolute;inset:0;background-repeat:no-repeat;background-size:1080px 1920px;display:none}
+.screen.on{display:block}
+
+/* ---------- áreas de toque sobre a arte ---------- */
+.hit{position:absolute;cursor:pointer;background:transparent}
+.hit:active{filter:brightness(1.12)}
+
+/* ---------- cadastro ---------- */
+.fld{position:absolute;border:none;background:transparent;
+  font-family:'RobotoF';font-weight:700;font-size:34px;color:#0a3d75;
+  padding:0 18px;outline:none}
+.fld::placeholder{color:#9db4cc;font-weight:400}
+
+.chk{position:absolute;cursor:pointer}
+.chk .mk{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  font-family:'PressStart2P';font-size:40px;color:#00539b;line-height:1}
+.chk.sel .mk{display:flex}
+
+.err{position:absolute;left:140px;width:800px;
+  font-family:'RobotoF';font-weight:700;font-size:27px;color:#c0392b;
+  opacity:0;transition:opacity .15s}
+.err.on{opacity:1}
+
+/* ---------- timer ---------- */
+.timer{position:absolute;font-family:'PressStart2P';font-size:26px;
+  letter-spacing:1px;padding:14px 20px;border-radius:10px;
+  background:rgba(255,255,255,.9);color:#0a3d75;border:4px solid #0a3d75}
+.timer.warn{background:#c0392b;color:#fff;border-color:#7d1f14}
+
+/* ---------- relacione as colunas ---------- */
+.card{position:absolute;width:290px;height:175px;background-repeat:no-repeat;
+  background-size:290px 175px;cursor:pointer;border-radius:14px;
+  transition:transform .12s, box-shadow .12s, opacity .2s}
+.card.sel{transform:scale(1.05);box-shadow:0 0 0 8px #00539b, 0 10px 26px rgba(0,0,0,.35);z-index:5}
+.card.done{opacity:.45;pointer-events:none}
+.card.bad{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-14px)}
+  40%{transform:translateX(14px)}60%{transform:translateX(-9px)}80%{transform:translateX(9px)}}
+
+#col-svg{position:absolute;inset:0;pointer-events:none;z-index:4}
+
+/* ---------- caça-palavras ---------- */
+#cp-letters{position:absolute;inset:0}
+.cel{position:absolute;width:34px;height:34px;line-height:34px;text-align:center;
+  font-family:'PressStart2P';font-size:26.8px;color:#000;cursor:pointer;
+  border-radius:6px;transition:background .12s,color .12s}
+.cel.pick{background:#00539b;color:#fff}
+.cel.hit2{background:#f29100;color:#fff}
+
+/* ---------- memória ---------- */
+.mcard{position:absolute;width:278px;height:168px;cursor:pointer;
+  perspective:900px;background:transparent}
+.mcard .in{position:relative;width:100%;height:100%;
+  transition:transform .4s;transform-style:preserve-3d}
+.mcard.up .in{transform:rotateY(180deg)}
+.mcard .fc{position:absolute;inset:0;backface-visibility:hidden;
+  background-repeat:no-repeat;background-size:278px 168px;border-radius:12px}
+.mcard .bk{transform:rotateY(180deg)}
+.mcard.pair{animation:pop .45s}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.09)}100%{transform:scale(1)}}
+
+/* ---------- overlay de contagem ---------- */
+#go{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(4,32,64,.82);z-index:40}
+#go.on{display:flex}
+#go b{font-family:'PressStart2P';font-size:190px;color:#ffc20e;
+  text-shadow:0 10px 0 #0a3d75}
+
+/* ---------- menu admin discreto ---------- */
+#dot{position:absolute;right:0;bottom:0;width:110px;height:110px;z-index:60;opacity:0}
+#menu{position:absolute;right:34px;bottom:150px;z-index:61;display:none;
+  background:#fff;border:5px solid #0a3d75;border-radius:16px;overflow:hidden}
+#menu.on{display:block}
+#menu button{display:block;width:340px;padding:26px;border:0;background:#fff;
+  font-family:'RobotoF';font-weight:700;font-size:30px;color:#0a3d75;text-align:left;
+  border-bottom:3px solid #e3e8ef}
+#menu button:last-child{border-bottom:0}
+
+#offline{position:absolute;left:24px;bottom:20px;z-index:59;
+  font-family:'RobotoF';font-weight:700;font-size:22px;color:#c0392b;display:none}
+#offline.on{display:block}
+</style>
+
+<div id="stage">
+
+  <!-- ══════════ ABERTURA ══════════ -->
+  <div class="screen" id="s-splash" style="background-image:url('telas/abertura.png')">
+    <div class="hit" data-go="cad1" style="left:0;top:0;width:1080px;height:1920px"></div>
+  </div>
+
+  <!-- ══════════ CADASTRO 1 ══════════ -->
+  <div class="screen" id="s-cad1" style="background-image:url('telas/cad1.png')">
+    <input class="fld" id="f-nome"  style="left:332px;top:627px;width:600px;height:73px" placeholder="" autocomplete="off" maxlength="60">
+    <input class="fld" id="f-doc"   style="left:440px;top:790px;width:492px;height:73px" placeholder="" inputmode="numeric" autocomplete="off" maxlength="18">
+    <input class="fld" id="f-mail"  style="left:337px;top:945px;width:595px;height:73px" placeholder="" inputmode="email" autocomplete="off" maxlength="60">
+    <input class="fld" id="f-tel"   style="left:379px;top:1132px;width:553px;height:73px" placeholder="" inputmode="tel" autocomplete="off" maxlength="16">
+    <div class="chk" data-grp="idade" data-val="sim" style="left:272px;top:1411px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="idade" data-val="nao" style="left:627px;top:1411px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="err" id="e-cad1" style="top:1520px"></div>
+    <div class="hit" data-go="splash" style="left:150px;top:1700px;width:230px;height:95px"></div>
+    <div class="hit" data-act="v1"    style="left:700px;top:1700px;width:245px;height:95px"></div>
+  </div>
+
+  <!-- ══════════ CADASTRO 2 — perfil ══════════ -->
+  <div class="screen" id="s-cad2" style="background-image:url('telas/cad2.png')">
+    <div class="chk" data-grp="perfil" data-val="comercio" style="left:151px;top:790px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="perfil" data-val="geral"    style="left:151px;top:1239px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="err" id="e-cad2" style="top:1560px"></div>
+    <div class="hit" data-go="cad1" style="left:150px;top:1700px;width:230px;height:95px"></div>
+    <div class="hit" data-act="v2"  style="left:700px;top:1700px;width:245px;height:95px"></div>
+  </div>
+
+  <!-- ══════════ CADASTRO 3 — interesses ══════════ -->
+  <div class="screen" id="s-cad3" style="background-image:url('telas/cad3.png')">
+    <div class="chk" data-grp="busca" data-multi="1" data-val="Bem-estar e lazer"        style="left:151px;top:790px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="busca" data-multi="1" data-val="Capacitação profissional" style="left:151px;top:949px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="busca" data-multi="1" data-val="Serviços de saúde"        style="left:151px;top:1108px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="busca" data-multi="1" data-val="Fortalecer negócio"       style="left:151px;top:1267px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="busca" data-multi="1" data-val="Info Sistema Comércio"    style="left:151px;top:1427px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="err" id="e-cad3" style="top:1580px"></div>
+    <div class="hit" data-go="cad2" style="left:150px;top:1700px;width:230px;height:95px"></div>
+    <div class="hit" data-act="v3"  style="left:700px;top:1700px;width:245px;height:95px"></div>
+  </div>
+
+  <!-- ══════════ CADASTRO 4 — LGPD ══════════ -->
+  <div class="screen" id="s-cad4" style="background-image:url('telas/cad4.png')">
+    <div class="chk" data-grp="lgpd" data-val="sim" style="left:270px;top:1268px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="chk" data-grp="lgpd" data-val="nao" style="left:626px;top:1268px;width:92px;height:73px"><span class="mk">X</span></div>
+    <div class="err" id="e-cad4" style="top:1390px"></div>
+    <div class="hit" data-go="cad3" style="left:150px;top:1700px;width:230px;height:95px"></div>
+    <div class="hit" data-act="v4"  style="left:700px;top:1700px;width:245px;height:95px"></div>
+  </div>
+
+  <!-- ══════════ SELEÇÃO DE JOGO ══════════ -->
+  <div class="screen" id="s-selecao" style="background-image:url('telas/selecao.png')">
+    <div class="hit" data-play="col" style="left:0px;top:855px;width:950px;height:215px"></div>
+    <div class="hit" data-play="cp"  style="left:0px;top:1139px;width:950px;height:215px"></div>
+    <div class="hit" data-play="mem" style="left:60px;top:1417px;width:1020px;height:215px"></div>
+  </div>
+
+  <!-- ══════════ RELACIONE AS COLUNAS ══════════ -->
+  <div class="screen" id="s-col-regras" style="background-image:url('telas/col-regras.png')">
+    <div class="hit" data-start="col" style="left:0;top:0;width:1080px;height:1920px"></div>
+  </div>
+
+  <div class="screen" id="s-col-jogo" style="background-image:url('telas/col-jogo-bg.png')">
+    <svg id="col-svg" width="1080" height="1920"></svg>
+    <div id="col-cards"></div>
+    <div class="timer" id="t-col" style="left:752px;top:506px">45s</div>
+  </div>
+
+  <div class="screen" id="s-col-win" style="background-image:url('telas/col-win.png')">
+    <div class="hit" data-go="cta-sesc" style="left:390px;top:1615px;width:300px;height:95px"></div>
+  </div>
+  <div class="screen" id="s-col-lose" style="background-image:url('telas/col-lose.png')">
+    <div class="hit" data-go="cta-sesc" style="left:390px;top:1618px;width:300px;height:95px"></div>
+  </div>
+  <div class="screen" id="s-cta-sesc" style="background-image:url('telas/cta-sesc.png')">
+    <div class="hit" data-act="fim"  style="left:160px;top:1415px;width:240px;height:92px"></div>
+    <div class="hit" data-act="mais" style="left:670px;top:1415px;width:265px;height:92px"></div>
+  </div>
+
+  <!-- ══════════ CAÇA-PALAVRAS ══════════ -->
+  <div class="screen" id="s-cp-regras" style="background-image:url('telas/cp-regras.png')">
+    <div class="hit" data-start="cp" style="left:0;top:0;width:1080px;height:1920px"></div>
+  </div>
+
+  <div class="screen" id="s-cp-jogo" style="background-image:url('telas/cp-jogo-bg.png')">
+    <div id="cp-letters"></div>
+    <div class="timer" id="t-cp" style="left:722px;top:540px">45s</div>
+  </div>
+
+  <div class="screen" id="s-cp-win" style="background-image:url('telas/cp-win.png')">
+    <div class="hit" data-go="cta-senac" style="left:390px;top:1618px;width:300px;height:95px"></div>
+  </div>
+  <div class="screen" id="s-cp-lose" style="background-image:url('telas/cp-lose.png')">
+    <div class="hit" data-go="cta-senac" style="left:390px;top:1618px;width:300px;height:95px"></div>
+  </div>
+  <div class="screen" id="s-cta-senac" style="background-image:url('telas/cta-senac.png')">
+    <div class="hit" data-act="fim"  style="left:160px;top:1415px;width:240px;height:92px"></div>
+    <div class="hit" data-act="mais" style="left:670px;top:1415px;width:265px;height:92px"></div>
+  </div>
+
+  <!-- ══════════ JOGO DA MEMÓRIA ══════════ -->
+  <div class="screen" id="s-mem-regras" style="background-image:url('telas/mem-regras.png')">
+    <div class="hit" data-start="mem" style="left:0;top:0;width:1080px;height:1920px"></div>
+  </div>
+
+  <div class="screen" id="s-mem-jogo" style="background-image:url('telas/mem-jogo-bg.png')">
+    <div id="mem-cards"></div>
+    <div class="timer" id="t-mem" style="left:752px;top:494px">45s</div>
+  </div>
+
+  <div class="screen" id="s-mem-win" style="background-image:url('telas/mem-win.png')">
+    <div class="hit" data-go="cta-sind" style="left:390px;top:1615px;width:300px;height:95px"></div>
+  </div>
+  <div class="screen" id="s-mem-lose" style="background-image:url('telas/mem-lose.png')">
+    <div class="hit" data-go="cta-sind" style="left:390px;top:1618px;width:300px;height:95px"></div>
+  </div>
+  <div class="screen" id="s-cta-sind" style="background-image:url('telas/cta-sind.png')">
+    <div class="hit" data-act="fim"  style="left:160px;top:1415px;width:240px;height:92px"></div>
+    <div class="hit" data-act="mais" style="left:670px;top:1415px;width:265px;height:92px"></div>
+  </div>
+
+  <!-- ══════════ overlays ══════════ -->
+  <div id="go"><b>3</b></div>
+  <div id="dot"></div>
+  <div id="menu">
+    <button data-act="admin">Painel de leads</button>
+    <button data-act="reiniciar">Reiniciar app</button>
+    <button data-act="fecharmenu">Fechar</button>
+  </div>
+  <div id="offline">● sem conexão — leads salvos localmente</div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════ CONFIG ════════════════ */
+const SHEETS_WEBHOOK_URL = ''; // ← cole aqui a URL do Apps Script (ver google-apps-script.gs)
+const LS_LEADS = 'fenics_leads';
+const LS_QUEUE = 'fenics_queue';
+const TEMPO_JOGO = 45;          // segundos, conforme a arte
+const INATIVIDADE = 90;         // segundos sem toque → volta pra abertura
+
+/* ════════════════ ESTADO ════════════════ */
+let lead = null;
+let jogados = [];               // jogos já concluídos nesta sessão
+let tela = 'splash';
+let timerId = null, restante = 0, inatId = null;
+
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ════════════════ ESCALA ════════════════ */
+function scaleToFit(){
+  const s = Math.min(innerWidth/1080, innerHeight/1920);
+  const st = document.getElementById('stage');
+  st.style.transform = `scale(${s})`;
+  st.style.left = ((innerWidth  - 1080*s)/2) + 'px';
+  st.style.top  = ((innerHeight - 1920*s)/2) + 'px';
+}
+addEventListener('resize', scaleToFit);
+
+/* ════════════════ NAVEGAÇÃO ════════════════ */
+function goTo(id){
+  pararTimer();
+  document.querySelectorAll('.screen').forEach(e => e.classList.remove('on'));
+  const el = document.getElementById('s-'+id);
+  if(el) el.classList.add('on');
+  tela = id;
+  location.hash = id;
+  resetInatividade();
+}
+
+function resetAll(){
+  lead = null; jogados = [];
+  document.querySelectorAll('.fld').forEach(i => i.value = '');
+  document.querySelectorAll('.chk').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('.err').forEach(e => e.classList.remove('on'));
+  fecharMenu();
+  goTo('splash');
+}
+
+function resetInatividade(){
+  clearTimeout(inatId);
+  if(tela === 'splash') return;
+  inatId = setTimeout(resetAll, INATIVIDADE*1000);
+}
+
+/* ════════════════ VALIDAÇÃO ════════════════ */
+function erro(id, msg){
+  const e = document.getElementById(id);
+  e.textContent = msg || '';
+  e.classList.toggle('on', !!msg);
+}
+
+function soDigitos(s){ return (s||'').replace(/\D/g,''); }
+
+function validaCPF(c){
+  c = soDigitos(c);
+  if(c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  let s = 0;
+  for(let i=0;i<9;i++) s += +c[i]*(10-i);
+  let d1 = (s*10)%11; if(d1===10) d1=0;
+  if(d1 !== +c[9]) return false;
+  s = 0;
+  for(let i=0;i<10;i++) s += +c[i]*(11-i);
+  let d2 = (s*10)%11; if(d2===10) d2=0;
+  return d2 === +c[10];
+}
+
+function validaCNPJ(c){
+  c = soDigitos(c);
+  if(c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const calc = n => {
+    let p = n===12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    let s = 0;
+    for(let i=0;i<n;i++) s += +c[i]*p[i];
+    const r = s % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return calc(12) === +c[12] && calc(13) === +c[13];
+}
+
+function validaTel(t){ const d = soDigitos(t); return d.length === 10 || d.length === 11; }
+function validaMail(m){ return /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test((m||'').trim()); }
+
+function marcados(grp){
+  return [...document.querySelectorAll(`.chk[data-grp="${grp}"].sel`)].map(c => c.dataset.val);
+}
+
+function v1(){
+  const nome = document.getElementById('f-nome').value.trim();
+  const doc  = document.getElementById('f-doc').value.trim();
+  const mail = document.getElementById('f-mail').value.trim();
+  const tel  = document.getElementById('f-tel').value.trim();
+  const id18 = marcados('idade')[0];
+
+  if(nome.length < 3)          return erro('e-cad1','Preencha seu nome completo.');
+  const d = soDigitos(doc);
+  if(d.length !== 11 && d.length !== 14) return erro('e-cad1','CPF (11 dígitos) ou CNPJ (14 dígitos).');
+  if(d.length === 11 && !validaCPF(d))   return erro('e-cad1','CPF inválido. Confira os números.');
+  if(d.length === 14 && !validaCNPJ(d))  return erro('e-cad1','CNPJ inválido. Confira os números.');
+  if(!validaMail(mail))        return erro('e-cad1','E-mail inválido.');
+  if(!validaTel(tel))          return erro('e-cad1','Telefone com DDD (10 ou 11 dígitos).');
+  if(!id18)                    return erro('e-cad1','Informe se você é maior de 18 anos.');
+  if(id18 === 'nao')           return erro('e-cad1','É necessário ser maior de 18 anos para participar.');
+
+  erro('e-cad1','');
+  lead = { nome, doc: d, email: mail, tel: soDigitos(tel), maior18: 'Sim' };
+  goTo('cad2');
+}
+
+function v2(){
+  const p = marcados('perfil')[0];
+  if(!p) return erro('e-cad2','Escolha uma opção para continuar.');
+  erro('e-cad2','');
+  lead.perfil = p === 'comercio' ? 'Empresa do comércio/serviços/turismo' : 'Público geral';
+  goTo('cad3');
+}
+
+function v3(){
+  const b = marcados('busca');
+  if(!b.length) return erro('e-cad3','Selecione ao menos uma opção.');
+  erro('e-cad3','');
+  lead.busca = b.join(' | ');
+  goTo('cad4');
+}
+
+function v4(){
+  const l = marcados('lgpd')[0];
+  if(!l)         return erro('e-cad4','Informe se aceita a Política de Privacidade.');
+  if(l === 'nao')return erro('e-cad4','É preciso aceitar a Política de Privacidade para jogar.');
+  erro('e-cad4','');
+  lead.lgpd = 'Sim';
+  lead.id = 'FN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
+  lead.timestamp = new Date().toISOString();
+  salvarLead();
+  goTo('selecao');
+}
+
+/* ════════════════ PERSISTÊNCIA ════════════════ */
+function salvarLead(){
+  // sem id o cadastro não foi concluído — gravar geraria linha órfã na planilha
+  if(!lead || !lead.id) return;
+  lead.jogos = jogados.map(j => `${j.jogo}:${j.acertos}/${j.total}`).join(' | ');
+  try{
+    const arr = JSON.parse(localStorage.getItem(LS_LEADS) || '[]');
+    const i = arr.findIndex(l => l.id === lead.id);
+    if(i >= 0) arr[i] = {...lead}; else arr.push({...lead});
+    localStorage.setItem(LS_LEADS, JSON.stringify(arr));
+  }catch(e){ console.warn('localStorage cheio ou indisponível', e); }
+  enviarSheets({...lead});
+}
+
+function enviarSheets(l){
+  if(!SHEETS_WEBHOOK_URL){ enfileirar(l); return; }
+  fetch(SHEETS_WEBHOOK_URL, {
+    method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(l)
+  }).then(() => {
+    desenfileirar(l.id);
+    document.getElementById('offline').classList.remove('on');
+  }).catch(() => {
+    enfileirar(l);
+    document.getElementById('offline').classList.add('on');
+  });
+}
+
+function enfileirar(l){
+  try{
+    const q = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]');
+    if(!q.some(x => x.id === l.id)) q.push(l);
+    localStorage.setItem(LS_QUEUE, JSON.stringify(q));
+  }catch(e){}
+}
+function desenfileirar(id){
+  try{
+    const q = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]');
+    localStorage.setItem(LS_QUEUE, JSON.stringify(q.filter(x => x.id !== id)));
+  }catch(e){}
+}
+function reenviarFila(){
+  if(!SHEETS_WEBHOOK_URL) return;
+  let q = [];
+  try{ q = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]'); }catch(e){ return; }
+  q.slice(0,8).forEach(enviarSheets);
+}
+setInterval(reenviarFila, 30000);
+
+/* ════════════════ TIMER ════════════════ */
+// O prazo é um instante no futuro, não uma contagem de ticks. Se o Android
+// suspender a aba (throttling agressivo em background), ao voltar o relógio
+// se corrige sozinho em vez de "ganhar" tempo parado.
+let prazoFim = 0, timerEl = null, timerCb = null;
+
+function iniciarTimer(elId, aoFim){
+  clearInterval(timerId);
+  timerEl = document.getElementById(elId);
+  timerCb = aoFim;
+  prazoFim = Date.now() + TEMPO_JOGO*1000;
+  timerId = setInterval(pintaTimer, 250);
+  pintaTimer();
+}
+
+function pintaTimer(){
+  if(!timerId || !timerEl) return;
+  restante = Math.max(0, Math.ceil((prazoFim - Date.now())/1000));
+  timerEl.textContent = restante + 's';
+  timerEl.classList.toggle('warn', restante <= 10);
+  if(restante <= 0){
+    const cb = timerCb;
+    pararTimer();
+    if(cb) cb();
+  }
+}
+
+function pararTimer(){
+  clearInterval(timerId);
+  timerId = null; timerCb = null; timerEl = null; prazoFim = 0;
+}
+
+// voltou do background: acerta o relógio na hora (e encerra se o tempo já passou)
+document.addEventListener('visibilitychange', () => { if(!document.hidden) pintaTimer(); });
+
+let contagemId = null;
+function contagem(cb){
+  const go = document.getElementById('go'), b = go.querySelector('b');
+  const daTela = tela;
+  let n = 3;
+  b.textContent = n;
+  go.classList.add('on');
+  clearInterval(contagemId);
+  contagemId = setInterval(() => {
+    // se saiu da tela no meio da contagem, aborta
+    if(tela !== daTela){ clearInterval(contagemId); go.classList.remove('on'); return; }
+    n--;
+    if(n === 0){ b.textContent = 'JÁ!'; }
+    else if(n < 0){ clearInterval(contagemId); go.classList.remove('on'); cb(); }
+    else b.textContent = n;
+  }, 700);
+}
+
+/* ════════════════ JOGO 1 — RELACIONE AS COLUNAS ════════════════ */
+const COL_PARES = [
+  { e:'psicologia',  te:'Psicologia',              d:'escuta',       td:'Escuta ativa' },
+  { e:'ginastica',   te:'Ginástica multifuncional',d:'corpo',        td:'Corpo em movimento' },
+  { e:'ioga',        te:'Ioga e pilates',          d:'equilibrio',   td:'Equilíbrio' },
+  { e:'turismo',     te:'Turismo',                 d:'lazer',        td:'Lazer' },
+  { e:'psiquiatria', te:'Psiquiatria',             d:'saude-mental', td:'Saúde mental' },
+];
+const COL_Y = [588, 810, 1031, 1253, 1474];
+let colSel = null, colFeitos = 0;
+
+function embaralha(a){
+  a = a.slice();
+  for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
+  return a;
+}
+
+function iniciaColunas(){
+  colSel = null; colFeitos = 0;
+  document.getElementById('col-svg').innerHTML = '';
+  const box = document.getElementById('col-cards');
+  box.innerHTML = '';
+  const E = embaralha(COL_PARES), D = embaralha(COL_PARES);
+  E.forEach((p,i) => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.style.cssText = `left:142px;top:${COL_Y[i]}px;background-image:url('sprites/col-e-${p.e}.png')`;
+    el.dataset.lado = 'e'; el.dataset.key = p.e;
+    box.appendChild(el);
+  });
+  D.forEach((p,i) => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.style.cssText = `left:648px;top:${COL_Y[i]}px;background-image:url('sprites/col-d-${p.d}.png')`;
+    el.dataset.lado = 'd'; el.dataset.key = p.d;
+    box.appendChild(el);
+  });
+  goTo('col-jogo');
+  contagem(() => iniciarTimer('t-col', () => fimColunas(false)));
+}
+
+function tocaCard(el){
+  if(!timerId || el.classList.contains('done')) return;
+  if(colSel === el){ el.classList.remove('sel'); colSel = null; return; }
+
+  if(!colSel){ colSel = el; el.classList.add('sel'); return; }
+
+  if(colSel.dataset.lado === el.dataset.lado){
+    colSel.classList.remove('sel'); colSel = el; el.classList.add('sel'); return;
+  }
+
+  const a = colSel.dataset.lado === 'e' ? colSel : el;
+  const b = colSel.dataset.lado === 'e' ? el : colSel;
+  const par = COL_PARES.find(p => p.e === a.dataset.key);
+
+  if(par && par.d === b.dataset.key){
+    a.classList.add('done'); b.classList.add('done');
+    a.classList.remove('sel'); b.classList.remove('sel');
+    ligar(a, b);
+    colFeitos++;
+    if(colFeitos === COL_PARES.length){ pararTimer(); setTimeout(() => fimColunas(true), 700); }
+  }else{
+    a.classList.add('bad'); b.classList.add('bad');
+    setTimeout(() => { a.classList.remove('bad','sel'); b.classList.remove('bad','sel'); }, 420);
+  }
+  colSel = null;
+}
+
+function ligar(a, b){
+  const svg = document.getElementById('col-svg');
+  const x1 = 142+290, y1 = parseInt(a.style.top)+87;
+  const x2 = 648,     y2 = parseInt(b.style.top)+87;
+  const ln = document.createElementNS('http://www.w3.org/2000/svg','path');
+  ln.setAttribute('d', `M${x1},${y1} C${x1+80},${y1} ${x2-80},${y2} ${x2},${y2}`);
+  ln.setAttribute('stroke', '#00539b');
+  ln.setAttribute('stroke-width', '9');
+  ln.setAttribute('fill', 'none');
+  ln.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(ln);
+}
+
+function fimColunas(venceu){
+  pararTimer();
+  jogados.push({ jogo:'Relacione as colunas', acertos:colFeitos, total:5, venceu });
+  salvarLead();
+  goTo(venceu ? 'col-win' : 'col-lose');
+}
+
+/* ════════════════ JOGO 2 — CAÇA-PALAVRAS ════════════════ */
+const CP_GRID = [
+ 'OPNOHEAOGHQR','FYGAEIIOREUE','RHRDEOSLNDAS','QRATOHLESOLO',
+ 'TPTRSHHGNHIH','GOUAEUALPOFL','TEINNNIGLNIL','OFTSNRSCWTCI',
+ 'PROFISSIONAL','ERSOIBEDILÇB','YGARIIOREUÃO','TAWMEHESTMOI',
+ 'OPNAHEAOGHQR','OPNÇHEAOGHQR','FYGÃEIIOREUE','RHROEOSLNDAS',
+ 'OFTLNRSCWAOG','PÓSGRADUAÇÃO','YGAEIIOREUET','QRAEOHLESOLO',
+ 'ERSEIBEDILÇB','TPTASHHGNHIH','QRAEOHLESOLO'
+];
+// posições conforme a arte aprovada (r0/c0 = primeira letra)
+const CP_PALAVRAS = [
+  { t:'QUALIFICAÇÃO',  r:0,  c:10, dr:1, dc:0, n:12 },
+  { t:'GRATUITOS',     r:1,  c:2,  dr:1, dc:0, n:9  },
+  { t:'TRANSFORMAÇÃO', r:3,  c:3,  dr:1, dc:0, n:13 },
+  { t:'PROFISSIONAL',  r:8,  c:0,  dr:0, dc:1, n:12 },
+  { t:'PÓS-GRADUAÇÃO', r:17, c:0,  dr:0, dc:1, n:12 },
+];
+const CP_X0 = 187.36, CP_Y0 = 812.62, CP_DX = 62.2617, CP_DY = 32.9965;
+let cpAchadas = [], cpPick = null;
+
+function iniciaCacaPalavras(){
+  cpAchadas = []; cpPick = null;
+  const box = document.getElementById('cp-letters');
+  box.innerHTML = '';
+  for(let r=0;r<CP_GRID.length;r++){
+    const linha = [...CP_GRID[r]];
+    for(let c=0;c<linha.length;c++){
+      const el = document.createElement('div');
+      el.className = 'cel';
+      el.textContent = linha[c];
+      el.style.left = (CP_X0 + c*CP_DX - 3.6) + 'px';
+      el.style.top  = (CP_Y0 + r*CP_DY - 3.6) + 'px';
+      el.dataset.r = r; el.dataset.c = c;
+      box.appendChild(el);
+    }
+  }
+  goTo('cp-jogo');
+  contagem(() => iniciarTimer('t-cp', () => fimCacaPalavras(false)));
+}
+
+function celulasDe(p){
+  const out = [];
+  for(let i=0;i<p.n;i++) out.push([p.r + p.dr*i, p.c + p.dc*i]);
+  return out;
+}
+
+function tocaCelula(el){
+  if(!timerId) return;
+  const r = +el.dataset.r, c = +el.dataset.c;
+
+  if(!cpPick){ cpPick = {r,c,el}; el.classList.add('pick'); return; }
+  if(cpPick.r === r && cpPick.c === c){ el.classList.remove('pick'); cpPick = null; return; }
+
+  // a jogada é: tocar a primeira e depois a última letra da palavra
+  const p = CP_PALAVRAS.find(w => {
+    if(cpAchadas.includes(w.t)) return false;
+    const cs = celulasDe(w);
+    const a = cs[0], b = cs[cs.length-1];
+    return (a[0]===cpPick.r && a[1]===cpPick.c && b[0]===r && b[1]===c) ||
+           (b[0]===cpPick.r && b[1]===cpPick.c && a[0]===r && a[1]===c);
+  });
+
+  cpPick.el.classList.remove('pick');
+  cpPick = null;
+
+  if(p){
+    cpAchadas.push(p.t);
+    celulasDe(p).forEach(([rr,cc]) => {
+      const cel = document.querySelector(`.cel[data-r="${rr}"][data-c="${cc}"]`);
+      if(cel) cel.classList.add('hit2');
+    });
+    if(cpAchadas.length === CP_PALAVRAS.length){
+      pararTimer();
+      setTimeout(() => fimCacaPalavras(true), 700);
+    }
+  }
+}
+
+function fimCacaPalavras(venceu){
+  pararTimer();
+  jogados.push({ jogo:'Caça-palavras', acertos:cpAchadas.length, total:5, venceu });
+  salvarLead();
+  goTo(venceu ? 'cp-win' : 'cp-lose');
+}
+
+/* ════════════════ JOGO 3 — MEMÓRIA ════════════════ */
+const MEM_CARTAS = ['credito','saude','certificacao','senac','credencial'];
+const MEM_POS = [[221,566],[581,566],[221,784],[581,784],[221,1002],
+                 [581,1002],[221,1220],[581,1220],[221,1438],[581,1438]];
+let memAberta = null, memPares = 0, memTrava = false;
+
+function iniciaMemoria(){
+  memAberta = null; memPares = 0; memTrava = false;
+  const box = document.getElementById('mem-cards');
+  box.innerHTML = '';
+  const baralho = embaralha([...MEM_CARTAS, ...MEM_CARTAS]);
+  baralho.forEach((k,i) => {
+    const [x,y] = MEM_POS[i];
+    const el = document.createElement('div');
+    el.className = 'mcard';
+    el.style.cssText = `left:${x}px;top:${y}px`;
+    el.dataset.key = k;
+    el.innerHTML =
+      `<div class="in">
+         <div class="fc" style="background-image:url('sprites/mem-verso.png')"></div>
+         <div class="fc bk" style="background-image:url('sprites/mem-${k}.png')"></div>
+       </div>`;
+    box.appendChild(el);
+  });
+  goTo('mem-jogo');
+  contagem(() => iniciarTimer('t-mem', () => fimMemoria(false)));
+}
+
+function tocaMemoria(el){
+  if(!timerId || memTrava) return;
+  if(el.classList.contains('up')) return;
+
+  el.classList.add('up');
+
+  if(!memAberta){ memAberta = el; return; }
+
+  if(memAberta.dataset.key === el.dataset.key){
+    el.classList.add('pair'); memAberta.classList.add('pair');
+    memAberta = null; memPares++;
+    if(memPares === MEM_CARTAS.length){
+      pararTimer();
+      setTimeout(() => fimMemoria(true), 800);
+    }
+  }else{
+    memTrava = true;
+    const a = memAberta; memAberta = null;
+    setTimeout(() => {
+      a.classList.remove('up'); el.classList.remove('up'); memTrava = false;
+    }, 850);
+  }
+}
+
+function fimMemoria(venceu){
+  pararTimer();
+  jogados.push({ jogo:'Jogo da memória', acertos:memPares, total:5, venceu });
+  salvarLead();
+  goTo(venceu ? 'mem-win' : 'mem-lose');
+}
+
+/* ════════════════ FLUXO DOS JOGOS ════════════════ */
+const REGRAS = { col:'col-regras', cp:'cp-regras', mem:'mem-regras' };
+
+// ninguém joga sem ter concluído o cadastro (protege contra entrar por hash)
+function temCadastro(){ return !!(lead && lead.id); }
+
+function escolherJogo(k){
+  if(!temCadastro()) return resetAll();
+  goTo(REGRAS[k]);
+}
+
+function comecar(k){
+  if(!temCadastro()) return resetAll();
+  if(k === 'col') iniciaColunas();
+  else if(k === 'cp') iniciaCacaPalavras();
+  else iniciaMemoria();
+}
+
+/* ════════════════ MENU ADMIN ════════════════ */
+let toques = 0, toqueT = null;
+function baterCanto(){
+  toques++;
+  clearTimeout(toqueT);
+  toqueT = setTimeout(() => toques = 0, 1200);
+  if(toques >= 4){ toques = 0; document.getElementById('menu').classList.add('on'); }
+}
+function fecharMenu(){ document.getElementById('menu').classList.remove('on'); }
+
+/* ════════════════ EVENTOS ════════════════ */
+document.addEventListener('click', ev => {
+  resetInatividade();
+
+  if(ev.target.closest('#dot')){ baterCanto(); return; }
+
+  const mb = ev.target.closest('#menu button');
+  if(mb){
+    const a = mb.dataset.act;
+    if(a === 'admin'){ fecharMenu(); open('admin.html','_blank'); }
+    else if(a === 'reiniciar'){ resetAll(); }
+    else fecharMenu();
+    return;
+  }
+  if(!ev.target.closest('#menu')) fecharMenu();
+
+  const card = ev.target.closest('.card');
+  if(card){ tocaCard(card); return; }
+
+  const cel = ev.target.closest('.cel');
+  if(cel){ tocaCelula(cel); return; }
+
+  const mc = ev.target.closest('.mcard');
+  if(mc){ tocaMemoria(mc); return; }
+
+  const chk = ev.target.closest('.chk');
+  if(chk){
+    const grp = chk.dataset.grp;
+    if(chk.dataset.multi) chk.classList.toggle('sel');
+    else{
+      document.querySelectorAll(`.chk[data-grp="${grp}"]`).forEach(c => c.classList.remove('sel'));
+      chk.classList.add('sel');
+    }
+    return;
+  }
+
+  const hit = ev.target.closest('.hit');
+  if(!hit) return;
+
+  if(hit.dataset.go)    return goTo(hit.dataset.go);
+  if(hit.dataset.play)  return escolherJogo(hit.dataset.play);
+  if(hit.dataset.start) return comecar(hit.dataset.start);
+
+  const act = hit.dataset.act;
+  if(act === 'v1') v1();
+  else if(act === 'v2') v2();
+  else if(act === 'v3') v3();
+  else if(act === 'v4') v4();
+  else if(act === 'fim') resetAll();
+  else if(act === 'mais') goTo('selecao');
+});
+
+// os campos não podem disparar o clique da tela
+document.querySelectorAll('.fld').forEach(i => {
+  i.addEventListener('click', e => e.stopPropagation());
+  i.addEventListener('focus', resetInatividade);
+});
+
+addEventListener('online',  () => { document.getElementById('offline').classList.remove('on'); reenviarFila(); });
+addEventListener('offline', () => document.getElementById('offline').classList.add('on'));
+
+/* ════════════════ BOOT ════════════════ */
+(function boot(){
+  scaleToFit();
+  // pré-carrega toda a arte para não travar no meio da partida
+  ['abertura','cad1','cad2','cad3','cad4','selecao',
+   'col-regras','col-jogo-bg','col-win','col-lose','cta-sesc',
+   'cp-regras','cp-jogo-bg','cp-win','cp-lose','cta-senac',
+   'mem-regras','mem-jogo-bg','mem-win','mem-lose','cta-sind']
+   .forEach(n => { const i = new Image(); i.src = 'telas/'+n+'.png'; });
+  ['mem-verso','mem-credito','mem-saude','mem-certificacao','mem-senac','mem-credencial',
+   'col-e-psicologia','col-e-ginastica','col-e-ioga','col-e-turismo','col-e-psiquiatria',
+   'col-d-corpo','col-d-saude-mental','col-d-escuta','col-d-equilibrio','col-d-lazer']
+   .forEach(n => { const i = new Image(); i.src = 'sprites/'+n+'.png'; });
+
+  // força a carga das fontes agora, senão o primeiro texto pisca sem elas
+  if(document.fonts && document.fonts.load){
+    ['26px PressStart2P','700 34px RobotoF','400 34px RobotoF','300 34px RobotoF']
+      .forEach(f => document.fonts.load(f, '0123456789ABCÇÃÕÉ'));
+  }
+
+  if(!navigator.onLine) document.getElementById('offline').classList.add('on');
+
+  // O totem sempre reabre na abertura: recarregar no meio de uma partida não
+  // pode deixar a tela presa num jogo sem cadastro. Para conferir a arte de uma
+  // tela específica em campo, use ?tela=nome (ex: ?tela=cta-sesc).
+  const alvo = new URLSearchParams(location.search).get('tela');
+  goTo(alvo && document.getElementById('s-'+alvo) ? alvo : 'splash');
+  reenviarFila();
+})();
+</script>
