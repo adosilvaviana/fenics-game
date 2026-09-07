@@ -106,6 +106,8 @@ html,body{width:100%;height:100%;background:#0a2d52;overflow:hidden;
 
   <!-- ══════════ CADASTRO 1 ══════════ -->
   <div class="screen" id="s-cad1" style="background-image:url('telas/cad1.png')">
+    <!-- atalho de teste: toque no "C" de "Cadastre-se" preenche tudo com dados fictícios -->
+    <div class="hit" data-act="mock" style="left:137px;top:242px;width:80px;height:160px"></div>
     <input class="fld" id="f-nome"  style="left:332px;top:627px;width:600px;height:73px" placeholder="" autocomplete="off" maxlength="60">
     <input class="fld" id="f-doc"   style="left:440px;top:790px;width:492px;height:73px" placeholder="" inputmode="numeric" autocomplete="off" maxlength="18">
     <input class="fld" id="f-mail"  style="left:337px;top:945px;width:595px;height:73px" placeholder="" inputmode="email" autocomplete="off" maxlength="60">
@@ -325,6 +327,50 @@ function validaMail(m){ return /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test((m||'').trim
 
 function marcados(grp){
   return [...document.querySelectorAll(`.chk[data-grp="${grp}"].sel`)].map(c => c.dataset.val);
+}
+
+function marcar(grp, val){
+  const el = document.querySelector(`.chk[data-grp="${grp}"][data-val="${val}"]`);
+  if(!el) return;
+  if(!el.dataset.multi)
+    document.querySelectorAll(`.chk[data-grp="${grp}"]`).forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+/* ════════════════ ATALHO DE TESTE ════════════════
+   Toque no "C" de "Cadastre-se" (tela cad1) preenche o cadastro inteiro com dados
+   fictícios, para conferir o app no totem sem digitar no teclado do Android.
+   Todo nome começa com "TESTE " — é assim que se acha e apaga essas linhas na
+   planilha depois, sem confundir com lead de verdade.                            */
+const MOCK_NOMES = ['Ana Souza','Bruno Lima','Carla Dias','Diego Alves',
+                    'Elena Rocha','Felipe Nunes','Gabriela Melo','Heitor Pinto'];
+
+function cpfDeTeste(){
+  const n = Array.from({length:9}, () => Math.floor(Math.random()*10));
+  let s = 0;
+  for(let i=0;i<9;i++) s += n[i]*(10-i);
+  let d1 = (s*10)%11; if(d1 === 10) d1 = 0;
+  n.push(d1);
+  s = 0;
+  for(let i=0;i<10;i++) s += n[i]*(11-i);
+  let d2 = (s*10)%11; if(d2 === 10) d2 = 0;
+  n.push(d2);
+  return n.join('');
+}
+
+function preencherMock(){
+  const nome = MOCK_NOMES[Math.floor(Math.random()*MOCK_NOMES.length)];
+  const primeiro = nome.split(' ')[0].toLowerCase();
+  document.getElementById('f-nome').value = 'TESTE ' + nome;
+  document.getElementById('f-doc').value  = cpfDeTeste();
+  document.getElementById('f-mail').value = `teste.${primeiro}@exemplo.com`;
+  document.getElementById('f-tel').value  = '389' + String(Math.floor(Math.random()*1e8)).padStart(8,'0');
+  marcar('idade','sim');
+  // já deixa as três telas seguintes prontas: o teste anda com AVANÇAR, AVANÇAR, JOGAR
+  marcar('perfil','comercio');
+  marcar('busca','Bem-estar e lazer');
+  marcar('lgpd','sim');
+  erro('e-cad1','');
 }
 
 function v1(){
@@ -781,7 +827,8 @@ document.addEventListener('click', ev => {
   if(hit.dataset.start) return comecar(hit.dataset.start);
 
   const act = hit.dataset.act;
-  if(act === 'v1') v1();
+  if(act === 'mock') preencherMock();
+  else if(act === 'v1') v1();
   else if(act === 'v2') v2();
   else if(act === 'v3') v3();
   else if(act === 'v4') v4();

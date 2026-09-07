@@ -228,6 +228,24 @@ L=$(curl -s -o /dev/null -w "%{redirect_url}" -X POST "$U" \
 curl -s "$L"     # → {"ok":true,"id":"T1","atualizado":false}
 ```
 
+### Atalho de teste (preencher sem digitar)
+
+Na tela `cad1`, um botão **invisível sobre o "C" de "Cadastre-se"** (x 137–217, y 242–401)
+preenche o cadastro inteiro com dados fictícios: nome sorteado, CPF gerado com dígitos
+verificadores corretos (passa na validação de verdade), e-mail, telefone, e já deixa
+marcadas as opções das telas 2, 3 e 4. Depois do toque, o caminho até o jogo é
+AVANÇAR, AVANÇAR, AVANÇAR, JOGAR.
+
+Serve para conferir o app no totem sem encarar o teclado do Android.
+
+**Todo nome gerado começa com `TESTE `** — é assim que se filtra e apaga essas linhas
+da planilha depois, sem confundir com lead de verdade. Antes de abrir para o público,
+vale conferir se sobrou algum `TESTE ` na planilha.
+
+Um visitante curioso pode tocar no "C" sem querer e ver o formulário se preencher.
+Se isso incomodar, exigir dois toques em até 600 ms resolve, ao custo de o técnico
+precisar saber disso.
+
 ### Painel
 
 Botão invisível no canto inferior direito — **4 toques** abrem o menu → "Painel de leads".
